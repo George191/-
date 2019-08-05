@@ -1,4 +1,5 @@
 from sklearn.cluster import k_means_
+from sklearn.cluster import KMeans
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
@@ -6,11 +7,8 @@ import pandas as pd
 import os
 import numpy as np
 
-k_means_cls = 10
-agg_cls = 700
 
-
-def k_means(sparse_data, k=k_means_cls):
+def k_means(sparse_data, k):
     def euc_dist(x, y=None, Y_norm_squared=None, squared=False):
         return cosine_similarity(x, y)
 
@@ -23,7 +21,7 @@ def k_means(sparse_data, k=k_means_cls):
     return model.labels_
 
 
-def agg_(sparse_data, k=agg_cls):
+def agg_(sparse_data, k):
     model = AgglomerativeClustering(k)
     model.fit(sparse_data)
     return model.labels_
@@ -46,12 +44,10 @@ def get_vec(path, file, words):
     return w2i
 
 
+def average_embed(path):
 
-
-
-def average_embed(path, file):
-    sentences, words = get_vocab(PATH, 'word2vec/testdata.xlsx')
-    word2ids = get_vec(PATH, 'wiki-news-300d-1M.vec', words)
+    sentences, words = get_vocab(path, 'word2vec/testdata.xlsx')
+    word2ids = get_vec(path, 'wiki-news-300d-1M.vec', words)
     sentences = [[word for word in sentence if word in word2ids] for sentence in sentences]
     embedding = []
     for sentence in sentences:
@@ -70,11 +66,37 @@ def average_embed(path, file):
         if count != 0:
             embed = embed / count
 
-        embed = embed.tolist()  # 变回List容易增加项 和 SVM分类
+        embed = embed.tolist()
         embedding.append(embed)
     return sentences, embedding
 
 
-PATH = '/Users/george/Downloads'
+if __name__ == '__main__':
+
+    PATH = '/Users/george/Downloads'
+    k_means_cls = 10
+    agg_cls = 1000
+    wfile = open(os.path.join('D:/桌面', 'cls.txt'), 'w', encoding='utf-8', newline='\n')
+    words = {word.strip() for word in open(os.path.join('E:/data/sources', 'vocabulary.txt'), encoding='utf-8')}
+    word2vec = get_vec('E:/data/工作文档/embeddings', 'normal_cbow.tsv', words)
+    ids = [vec for _, vec in word2vec.items()]
+    k_means_model = KMeans(k_means_cls)
+    df = pd.DataFrame()
+    df['cls'] = k_means_model.fit(ids).labels_
+    df['vec'] = ids
+    for label in df.groupby('cls'):
+        print(f"当前：{label[0]} 批次， 共 {k_means_cls} 批次")
+        agg_label = agg_([i for i in label[-1]['vec']], agg_cls)
+        label[-1]['cls2'] = agg_label
+        for label2 in label[-1].groupby('cls2'):
+            wfile.writelines(f"{label[0]}\t{label2[0]}\t{' '.join([[k for k, v in word2vec.items() if v == i][0] for i in label2[-1]['vec']])}\n")
+    wfile.close()
+    # for kmeans_cls in df.groupby('vector'):
+    #     for index in range(len(agg_(kmeans_cls[-1]['vector'], agg_cls))):
+    #         wfile.writelines()
+
+    # sentences, embedding = average_embed(PATH)
+    # for k_means_label in k_means(embedding, k_means_cls):
+    #     print(k_means_label)
 
 
